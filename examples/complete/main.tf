@@ -2,20 +2,28 @@ provider "aws" {
   region = "eu-west-1"
 }
 
-##----------------------------------------------------------------------------- 
-## IAM role module call.   
+locals {
+  name        = "role-test"
+  environment = "test"
+}
+
+##-----------------------------------------------------------------------------
+## IAM role module call.
 ##-----------------------------------------------------------------------------
 module "iam-role" {
   source             = "./../../"
-  name               = "iam"
-  environment        = "test"
+  name               = local.name
+  environment        = local.environment
   assume_role_policy = data.aws_iam_policy_document.default.json
   policy_enabled     = true
   policy             = data.aws_iam_policy_document.iam-policy.json
+  managed_policy_arns = [
+    "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
+  ]
 }
 
-##----------------------------------------------------------------------------- 
-## Data block to create IAM policy.  
+##-----------------------------------------------------------------------------
+## Data block to create IAM policy.
 ##-----------------------------------------------------------------------------
 data "aws_iam_policy_document" "default" {
   statement {
@@ -28,8 +36,8 @@ data "aws_iam_policy_document" "default" {
   }
 }
 
-##----------------------------------------------------------------------------- 
-## Data block to create IAM policy.  
+##-----------------------------------------------------------------------------
+## Data block to create IAM policy.
 ##-----------------------------------------------------------------------------
 data "aws_iam_policy_document" "iam-policy" {
   statement {
@@ -43,3 +51,4 @@ data "aws_iam_policy_document" "iam-policy" {
     resources = ["*"]
   }
 }
+

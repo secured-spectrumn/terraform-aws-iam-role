@@ -1,12 +1,9 @@
-# Managed By : CloudDrove 
-# Copyright @ CloudDrove. All Right Reserved.
-
-##----------------------------------------------------------------------------- 
-## Labels module callled that will be used for naming and tags.   
+##-----------------------------------------------------------------------------
+## Labels module callled that will be used for naming and tags.
 ##-----------------------------------------------------------------------------
 module "labels" {
   source  = "clouddrove/labels/aws"
-  version = "1.3.0"
+  version = "1.3.1"
 
   enabled     = var.enabled
   name        = var.name
@@ -16,14 +13,13 @@ module "labels" {
   label_order = var.label_order
 }
 
-##----------------------------------------------------------------------------- 
-## Below resource will deploy IAM role in AWS environment.   
+##-----------------------------------------------------------------------------
+## Below resource will deploy IAM role in AWS environment.
 ##-----------------------------------------------------------------------------
 resource "aws_iam_role" "default" {
   count                 = var.enabled ? 1 : 0
   name                  = module.labels.id
-  assume_role_policy    = var.assume_role_policy
-  managed_policy_arns   = var.managed_policy_arns
+  assume_role_policy    = coalesce(var.assume_role_policy, data.aws_iam_policy_document.default_assume_role[0].json)
   force_detach_policies = var.force_detach_policies
   path                  = var.path
   description           = var.description
@@ -32,21 +28,31 @@ resource "aws_iam_role" "default" {
   tags                  = module.labels.tags
 }
 
-##----------------------------------------------------------------------------- 
-## Below resource will deploy IAM policy and attach it to above created IAM role.   
+##-----------------------------------------------------------------------------
+## Below resource will deploy IAM policy and attach it to above created IAM role.
 ##-----------------------------------------------------------------------------
 resource "aws_iam_role_policy" "default" {
   count  = var.enabled && var.policy_enabled && var.policy_arn == "" ? 1 : 0
   name   = format("%s-policy", module.labels.id)
-  role   = aws_iam_role.default.*.id[0]
+  role   = aws_iam_role.default[0].id
   policy = var.policy
 }
 
-##----------------------------------------------------------------------------- 
-## Below resource will attach IAM policy to above created IAM role.  
+##-----------------------------------------------------------------------------
+## Below resource will attach IAM policy to above created IAM role.
 ##-----------------------------------------------------------------------------
 resource "aws_iam_role_policy_attachment" "default" {
   count      = var.enabled && var.policy_enabled && var.policy_arn != "" ? 1 : 0
-  role       = aws_iam_role.default.*.id[0]
+  role       = aws_iam_role.default[0].id
   policy_arn = var.policy_arn
 }
+
+##-----------------------------------------------------------------------------
+## Below resource will attach managed policies arn to IAM role
+##-----------------------------------------------------------------------------
+resource "aws_iam_role_policy_attachment" "managed_policy" {
+  for_each   = var.enabled ? toset(var.managed_policy_arns) : []
+  role       = aws_iam_role.default[0].id
+  policy_arn = each.value
+}
+
